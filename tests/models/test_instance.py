@@ -3,17 +3,16 @@ import datetime
 import pytest
 from libdev.codes import USER_STATUSES, LOCALES
 
-from consql import Attribute
+from . import Base, Attribute
 from consql.storable import Table
-from consql.storable.pg import Pg
 
 
-class User(Pg, table=Table('users')):
+class User(Base, table=Table('users')):
     id = Attribute(types=int, required=False)
     status = Attribute(
         types=str,
         required=True,
-        default='registered', # authorized
+        default='authorized',
         enum=USER_STATUSES,
     )
     image = Attribute(types=str, required=False)
