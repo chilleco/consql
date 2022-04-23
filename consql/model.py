@@ -1,7 +1,27 @@
+import copy
 import json
 from abc import abstractmethod
 
-from .errors import ErrorInvalid, ErrorRequest
+from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
+
+
+def enum(data):
+    if not isinstance(data, (tuple, list, set)) or not data:
+        raise ValueError('Enum exception')
+
+    data = set(data)
+
+    def check(value, self=None, field=None):
+        if isinstance(value, (list, tuple, set)):
+            for v in value:
+                if v not in data:
+                    return False
+
+            return True
+
+        return value in data
+
+    return check
 
 
 class Attribute:
@@ -13,6 +33,8 @@ class Attribute:
     coerce = None
     always: bool = False
     required: bool = None
+    plugins: dict = None
+    validators: dict = None
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -63,6 +85,23 @@ class Attribute:
             if self.required:
                 raise ErrorInvalid(self.name)
 
+        if new_value is not None or self.required:
+            for validator_name, validate in self.validators.items():
+                if self.name not in instance.__dict__:
+                    if validate(new_value):
+                        continue
+                else:
+                    try:
+                        if validate(new_value):
+                            continue
+                    except ErrorRequest:
+                        if validate(new_value, self=instance, field=self):
+                            continue
+
+                raise ErrorInvalid(
+                    f'{self.name}#{validator_name}: {new_value}'
+                )
+
         self._update_rehashed(instance, self.name, new_value)
         instance.__dict__[self.name] = new_value
 
@@ -83,6 +122,7 @@ class Attribute:
         coerce=None,
         default=None,
         always=False,
+        **plugins,
     ):
         self.required = required
         if not isinstance(types, (tuple, set, list)):
@@ -104,6 +144,8 @@ class Attribute:
         else:
             self.default = lambda *args, **kwargs: default
 
+        self.plugins = plugins
+        self.validators = {}
         self.always = bool(always)
 
 
@@ -131,6 +173,26 @@ class Meta:
 
         self.fields = fields
 
+        for v in self.fields.values():
+            v.validators = {}
+            for pname, pargs in v.plugins.items():
+                if pname == 'enum':
+                    v.validators[pname] = enum(pargs)
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+            self._subclass_attributes.add(attr)
+
+        for base_class in owner_class.__bases__:
+            parent_meta = getattr(base_class, 'meta', None)
+
+            if isinstance(parent_meta, type(self)):
+                for attr in parent_meta._subclass_attributes:
+                    if hasattr(self, attr):
+                        continue
+
+                    setattr(self, attr, getattr(parent_meta, attr))
+
 
 class Base:
     """ Base """
@@ -143,6 +205,11 @@ class Base:
     def database(self):
         pass
 
+    def __new__(cls, *arg, **kwarg):
+        self = super().__new__(cls)
+        self._rehashed = set()
+        return self
+
     def __init__(
         self,
         arg_data: dict = None,
@@ -151,13 +218,48 @@ class Base:
         if not arg_data:
             arg_data = kwargs
 
+        # Coerce check
+
+        need_self = []
+
+        for name, fielddesc in self.meta.fields.items():
+            try:
+                if name in arg_data:
+                    value = arg_data[name]
+                elif getattr(self, name) is None:
+                    value = fielddesc.default()
+
+                setattr(self, name, value)
+
+            except ErrorRequest:
+                need_self.append(name)
+
+        for name in need_self:
+            fielddesc = self.meta.fields[name]
+
+            if name in arg_data:
+                value = arg_data[name]
+
+            elif getattr(self, name) is None:
+                try:
+                    value = fielddesc.default()
+                except ErrorRequest:
+                    value = fielddesc.default(self=self, field=fielddesc)
+
+            self.__dict__[name] = None
+            setattr(self, name, value)
+
+        #
         for k, v in arg_data.items():
             if not hasattr(self, k):
                 continue
+
             if k in self.meta.fields:
                 continue
 
             setattr(self, k, v)
+
+        self.rehashed('-clean')
 
     def __init_subclass__(
         cls,
@@ -169,6 +271,73 @@ class Base:
             cls,
             **kwargs,
         )
+
+    def rehashed(self, *args, **kwargs):
+        if not args and not kwargs:
+            return copy.copy(self._rehashed)
+
+        if len(args) == 1:
+            name = args[0]
+
+            if isinstance(name, dict):
+                for k, v in name.items():
+                    kwargs.setdefault(k, v)
+
+                args = []
+
+            else:
+                if name == '-clean':
+                    self._rehashed = set()
+                    return None
+
+                if name == '-check':
+                    return copy.copy(self._rehashed)
+
+                if isinstance(name, str):
+                    if name not in self.meta.fields:
+                        raise ErrorWrong(name)
+
+                    return name in self._rehashed
+
+                raise ErrorInvalid('rehashed')
+
+        if len(args) % 2:
+            raise ErrorInvalid('rehashed')
+
+        for i in range(0, len(args), 2):
+            kwargs.setdefault(args[i], args[i + 1])
+
+        for name, rehashed in kwargs.items():
+            if name not in self.meta.fields:
+                continue
+
+            if rehashed:
+                self._rehashed.add(name)
+            else:
+                self._rehashed.discard(name)
+
+        return None
+
+    def rehash(self, *args, **kwargs):
+        if len(args) == 1:
+            row = args[0]
+
+            if isinstance(row, dict):
+                for name, value in row.items():
+                    kwargs.setdefault(name, value)
+                args = []
+
+        if len(args) % 2:
+            raise ErrorInvalid('rehash')
+
+        for i in range(0, len(args), 2):
+            kwargs.setdefault(args[i], args[i + 1])
+
+        for name, value in kwargs.items():
+            if name not in self.meta.fields:
+                continue
+
+            setattr(self, name, value)
 
     def json(self, **kwargs):
         """ Get dictionary of the object """
@@ -193,6 +362,17 @@ class Base:
             f"Object {self.__class__.__name__}"
             f"({json.dumps(self.json(), ensure_ascii=False)})"
         )
+
+    def __getitem__(self, key):
+        if key not in self.meta.fields:
+            raise ErrorWrong(str(key))
+        return getattr(self, key)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
 
 class BaseModel(Base):
     """ Base model """

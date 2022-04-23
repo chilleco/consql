@@ -3,8 +3,7 @@ import datetime
 import pytest
 from libdev.codes import USER_STATUSES, LOCALES
 
-from . import Base, Attribute
-from consql.storable import Table
+from . import Base, Attribute, Table
 
 
 class User(Base, table=Table('users')):
@@ -13,7 +12,7 @@ class User(Base, table=Table('users')):
         types=str,
         required=True,
         default='authorized',
-        # enum=USER_STATUSES,
+        enum=USER_STATUSES,
     )
     image = Attribute(types=str, required=False)
     login = Attribute(types=str, required=False)
@@ -25,7 +24,7 @@ class User(Base, table=Table('users')):
     lang = Attribute(
         types=str,
         required=False,
-        # enum=LOCALES,
+        enum=LOCALES,
     )
     birthday = Attribute(
         types=datetime.date,
