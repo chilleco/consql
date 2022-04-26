@@ -71,11 +71,12 @@ async def test_simple():
 
     await user.save()
 
-    # user = await User.load(1)
-    # assert user.login == 'kosyachniy'
+    user = await User.get(1)
+    assert user.login == 'kosyachniy'
 
-    users = await User.get()
-    assert len(users.list) == 1
+    users, cursor = await User.get()
+    assert len(users) == 1
+    assert cursor
 
     # assert user.json() == {
     #     'id': 1,

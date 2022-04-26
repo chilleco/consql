@@ -2,7 +2,6 @@ import os
 import os.path
 import copy
 import re
-import json
 import time
 import base64
 import hashlib
@@ -11,6 +10,7 @@ from abc import abstractmethod
 from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
 from ._db import dbh
 from ._sql import sqlt
+from . import _json as json
 
 
 TOKEN = ''
@@ -603,6 +603,7 @@ class BaseModel(Base):
                         self.rehashed(name=True)
 
         sql, bindvars = sqlt('save.sqlt', {
+            **kw,
             'key_def': 'id',
             'key_tuple': self.key_for(self.meta.table.pkey),
             'table': self.meta.table,
@@ -614,17 +615,17 @@ class BaseModel(Base):
         async with dbh(**db) as conn:
             data = await conn.fetchrow(sql, *bindvars)
 
-            if not data:
-                raise Exception('Save exception')
+        if not data:
+            raise Exception('Save exception')
 
-            for k, v in data.items():
-                if k not in self.meta.fields:
-                    continue
+        for k, v in data.items():
+            if k not in self.meta.fields:
+                continue
 
-                setattr(self, k, v)
+            setattr(self, k, v)
 
-            self.rehashed('-clean')
-            return self
+        self.rehashed('-clean')
+        return self
 
     async def rm(self, db=None, **kw):
         """ Remove """
@@ -632,6 +633,7 @@ class BaseModel(Base):
         db = self.get_db(db)
 
         sql, bindvars = sqlt('rm.sqlt', {
+            **kw,
             'key_def': ['id'],
             'key_tuple': self.key_for(self.meta.table.pkey),
             'table': self.meta.table,
@@ -644,46 +646,69 @@ class BaseModel(Base):
         async with dbh(**db) as conn:
             data = await conn.fetchrow(sql, *bindvars)
 
-            if not data:
-                raise Exception('Remove exception')
+        if not data:
+            raise Exception('Remove exception')
 
-            for k, v in data.items():
-                if k not in self.meta.fields:
-                    continue
+        for k, v in data.items():
+            if k not in self.meta.fields:
+                continue
 
-                setattr(self, k, v)
+            setattr(self, k, v)
 
-            self.rehashed('-clean')
-            return self
+        self.rehashed('-clean')
+        return self
 
     @classmethod
-    async def get(cls, db=None, cursor=None, **kw):
+    async def get(cls, ids=None, db=None, cursor=None, **kw):
         """ Get instances of the object """
 
         db = cls.get_db(db)
-        kw = {
-            **kw,
-            'table': cls.meta.table,
-            'sqlbase': cls.sqlbase(),
-            'shard': db.get('shard'),
-        }
 
-        if 'sort' in kw and isinstance(kw['sort'], str):
-            kw['sort'] = [kw['sort']]
+        if ids:
+            kw = {
+                **kw,
+                'key_def': ('id',),
+                'key': ids,
+                'key_tuple': [ids],
+                'class': cls,
+                'table': cls.meta.table,
+                'sqlbase': cls.sqlbase(),
+                'shard': db.get('shard'),
+            }
 
-        cursor = Cursor(kw)
-        sql, args = sqlt('list.sqlt', {
-            **kw,
-            'cursor': cursor,
-        })
+        else:
+            kw = {
+                **kw,
+                'table': cls.meta.table,
+                'sqlbase': cls.sqlbase(),
+                'shard': db.get('shard'),
+            }
+
+            if 'sort' in kw and isinstance(kw['sort'], str):
+                kw['sort'] = [kw['sort']]
+
+            cursor = Cursor(kw)
+            kw['cursor'] = cursor
+
+        sql, args = sqlt('load.sqlt' if ids else 'list.sqlt', kw)
 
         async with dbh(**db) as conn:
-            rows = await conn.fetch(sql, *args)
+            data = await conn.fetch(sql, *args)
 
-        cursor.list = [cls(x) for x in rows]
+        if not data:
+            return None
+
+        if ids:
+            data = cls(data[0])
+            if isinstance(db, dict) and 'shard' in db:
+                data.actual_shard = db['shard']
+
+            return data
+
+        cursor.list = [cls(x) for x in data]
 
         if isinstance(db, dict) and 'shard' in db:
             for item in cursor.list:
                 item.actual_shard = db['shard']
 
-        return cursor
+        return cursor.list, cursor.cursor_str
