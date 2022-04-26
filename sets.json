@@ -11,6 +11,7 @@
         "port": 5432,
         "db": "main",
         "user": "postgres",
-        "pass": "password"
+        "pass": "password",
+        "debug": "explain,inline,copy"
     }
 }

@@ -69,7 +69,7 @@ async def test_simple():
     )
     assert str(user)[:11] == "Object User"
 
-    # await user.save()
+    await user.save()
 
     # user = await User.load(1)
     # assert user.login == 'kosyachniy'
@@ -90,3 +90,5 @@ async def test_simple():
     #     'lang': None,
     #     'birthday': None,
     # }
+
+    await user.rm()

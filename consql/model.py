@@ -492,7 +492,7 @@ class BaseModel(Base):
                         self.rehashed(name=True)
 
         sql, bindvars = sqlt('save.sqlt', {
-            'key_def': 'id',
+            'key_def': ['id'],
             'key_tuple': self.key_for(self.meta.table.pkey),
             'table': self.meta.table,
             'this': self,
@@ -505,6 +505,34 @@ class BaseModel(Base):
 
             if not data:
                 raise Exception('Save exception')
+
+            for k, v in data.items():
+                if k not in self.meta.fields:
+                    continue
+
+                setattr(self, k, v)
+
+            self.rehashed('-clean')
+            return self
+
+    async def rm(self, db=None, **kw):
+        db = self.get_db(db)
+
+        sql, bindvars = sqlt('rm.sqlt', {
+            'key_def': ['id'],
+            'key_tuple': self.key_for(self.meta.table.pkey),
+            'table': self.meta.table,
+            'this': self,
+            'sqlbase': self.sqlbase(),
+            'shard': db.get('shard'),
+
+        })
+
+        async with dbh(**db) as conn:
+            data = await conn.fetchrow(sql, *bindvars)
+
+            if not data:
+                raise Exception('Remove exception')
 
             for k, v in data.items():
                 if k not in self.meta.fields:

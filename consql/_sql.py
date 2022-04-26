@@ -8,6 +8,7 @@ import sys
 import json
 from threading import local
 
+from libdev.cfg import cfg
 import jinja2
 import jinja2.ext
 import jinja2.nodes
@@ -135,9 +136,12 @@ class _QuoteVariable():
             return self.v.escape()
 
         if self.q:
-            if hasattr(self.v, 'postgresql'):
-                v = self.v.postgresql()
-            else:
+            try:
+                if hasattr(self.v, 'postgresql'):
+                    v = self.v.postgresql()
+                else:
+                    v = self.v
+            except:
                 v = self.v
 
             _bindValues.lst.append(v)
@@ -183,6 +187,7 @@ class agent():
 
     def __call__(self, fname: str, args: dict = None):
         tpl = self._cache.get(fname)
+
         if not tpl:
             tpl = self._env.get_template(fname)
             self._cache[fname] = tpl
@@ -197,8 +202,8 @@ class agent():
             _bindValues.lst = []
             _bindValues.placeholders = self.placeholders
             _bindValues.json_encoder = self.json_encoder
-            res = tpl.render(**args)
 
+            res = tpl.render(**args)
             vlist = _bindValues.lst
 
         finally:
@@ -251,13 +256,18 @@ def _sql_variable_inline(sql, bindvars):
 class _sqlt_agent(agent):
     def __call__(self, name: str, args: dict=None):
 
-        dump_str = os.environ.get('DEBUG_SQL', args.get('debug', ''))
+        dump_str = cfg('pg.debug')
 
         if not dump_str:
             return super().__call__(name, args)
 
-        dump_items = map(lambda x: x.split('=', 1), dump_str.split(','))
-        dump_items = dict(map(lambda x: (x[0], x[-1]), dump_items))
+        dump_items = {
+            i[0]: i[-1]
+            for i in [
+                j.split('=', 1)
+                for j in dump_str.split(',')
+            ]
+        }
 
         fh = sys.stderr
         if 'stdout' in dump_items:
