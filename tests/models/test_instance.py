@@ -74,8 +74,8 @@ async def test_simple():
     # user = await User.load(1)
     # assert user.login == 'kosyachniy'
 
-    # users = await User.list()
-    # assert len(users.list) == 1
+    users = await User.get()
+    assert len(users.list) == 1
 
     # assert user.json() == {
     #     'id': 1,

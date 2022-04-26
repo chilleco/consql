@@ -3,11 +3,18 @@ import os.path
 import copy
 import re
 import json
+import time
+import base64
+import hashlib
 from abc import abstractmethod
 
 from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
 from ._db import dbh
 from ._sql import sqlt
+
+
+TOKEN = ''
+CURSOR_LIMIT = 100
 
 
 def enum(data):
@@ -27,6 +34,43 @@ def enum(data):
         return value in data
 
     return check
+
+def pack(salt: str, **kwargs):
+    data = json.dumps(kwargs)
+    data = base64.b64encode(data.encode()).decode()
+
+    if salt is None:
+        salt = ''
+
+    data_salt = data + salt
+
+    sign = hashlib.sha1(data_salt.encode()).hexdigest()
+    return data + '.' + sign
+
+def unpack(salt: str, token: str):
+    if not isinstance(token, str):
+        return None
+
+    if salt is None:
+        salt = ''
+
+    try:
+        data, sign = token.split('.', 1)
+    except ValueError:
+        return None
+    if not sign:
+        return None
+
+    data_salt = data + salt
+    sign_check = hashlib.sha1(data_salt.encode()).hexdigest()
+
+    if sign_check != sign:
+        return None
+
+    payload = base64.b64decode(data)
+    result = json.loads(payload)
+
+    return result
 
 
 class Attribute:
@@ -427,6 +471,67 @@ class Base:
         else:
             raise ErrorWrong("by")
 
+
+class Cursor(Base):
+    """ Cursor """
+
+    time = Attribute(types=int, required=True, default=lambda: int(time.time()))
+    limit = Attribute(types=int)
+
+    def __init__(self, row=None, **kw):
+        if row is None:
+            row = {}
+        elif isinstance(row, Cursor):
+            row = row.json()
+        else:
+            row = copy.copy(row)
+
+        if isinstance(row, str):
+            data = unpack(TOKEN, row)
+
+            if data is None:
+                row = {}
+            elif isinstance(data, dict):
+                row = data.get('cursor', {})
+            else:
+                row = {}
+
+        elif row is None:
+            row = {}
+
+        self.list = []
+
+        super().__init__(row, **kw)
+
+    def __iter__(self):
+        for item in self.list:
+            yield item
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_traceback):
+        pass
+
+    @property
+    def cursor_str(self):
+        return pack(TOKEN, cursor=self)
+
+    def is_full(self):
+        return len(self.list) >= self.limit
+
+    @staticmethod
+    def _force_limit(limit):
+        if limit is None:
+            return CURSOR_LIMIT
+        if limit > CURSOR_LIMIT:
+            return CURSOR_LIMIT
+        if limit < 1:
+            return 1
+
+        return limit
+
+
 class BaseModel(Base):
     """ Base model """
 
@@ -467,6 +572,12 @@ class BaseModel(Base):
         return os.path.join(*paths)
 
     @classmethod
+    def sqlpath(cls, subpath):
+        if not re.search(r'\.sql$', subpath):
+            subpath += '.sqlt'
+        return os.path.join(cls.sqlbase(), subpath)
+
+    @classmethod
     def get_db(cls, dbdef=None, key=None):
         if dbdef is None:
             if cls.database is not None:
@@ -492,7 +603,7 @@ class BaseModel(Base):
                         self.rehashed(name=True)
 
         sql, bindvars = sqlt('save.sqlt', {
-            'key_def': ['id'],
+            'key_def': 'id',
             'key_tuple': self.key_for(self.meta.table.pkey),
             'table': self.meta.table,
             'this': self,
@@ -516,6 +627,8 @@ class BaseModel(Base):
             return self
 
     async def rm(self, db=None, **kw):
+        """ Remove """
+
         db = self.get_db(db)
 
         sql, bindvars = sqlt('rm.sqlt', {
@@ -542,3 +655,35 @@ class BaseModel(Base):
 
             self.rehashed('-clean')
             return self
+
+    @classmethod
+    async def get(cls, db=None, cursor=None, **kw):
+        """ Get instances of the object """
+
+        db = cls.get_db(db)
+        kw = {
+            **kw,
+            'table': cls.meta.table,
+            'sqlbase': cls.sqlbase(),
+            'shard': db.get('shard'),
+        }
+
+        if 'sort' in kw and isinstance(kw['sort'], str):
+            kw['sort'] = [kw['sort']]
+
+        cursor = Cursor(kw)
+        sql, args = sqlt('list.sqlt', {
+            **kw,
+            'cursor': cursor,
+        })
+
+        async with dbh(**db) as conn:
+            rows = await conn.fetch(sql, *args)
+
+        cursor.list = [cls(x) for x in rows]
+
+        if isinstance(db, dict) and 'shard' in db:
+            for item in cursor.list:
+                item.actual_shard = db['shard']
+
+        return cursor
