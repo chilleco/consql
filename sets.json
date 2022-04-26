@@ -1,0 +1,16 @@
+{
+    "pager": {
+        "limit": 25,
+        "max_limit": 150
+    },
+    "cursor": {
+        "limit": 100
+    },
+    "pg": {
+        "host": "localhost",
+        "port": 5432,
+        "db": "main",
+        "user": "postgres",
+        "pass": "password"
+    }
+}

@@ -1,8 +1,13 @@
+import os
+import os.path
 import copy
+import re
 import json
 from abc import abstractmethod
 
 from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
+from ._db import dbh
+from ._sql import sqlt
 
 
 def enum(data):
@@ -33,6 +38,7 @@ class Attribute:
     coerce = None
     always: bool = False
     required: bool = None
+    tags: list = None
     plugins: dict = None
     validators: dict = None
 
@@ -120,6 +126,7 @@ class Attribute:
         types,
         required=False,
         coerce=None,
+        tags=None,
         default=None,
         always=False,
         **plugins,
@@ -143,6 +150,15 @@ class Attribute:
             self.default = default
         else:
             self.default = lambda *args, **kwargs: default
+
+        if tags is not None:
+            if isinstance(tags, (list, tuple, set)):
+                tags = list(tags)
+            elif isinstance(tags, str):
+                tags = [tags]
+            self.tags = tags
+        else:
+            self.tags = []
 
         self.plugins = plugins
         self.validators = {}
@@ -169,7 +185,6 @@ class Meta:
             if not attr.name:
                 attr.name = name
             fields[name] = attr
-
 
         self.fields = fields
 
@@ -374,6 +389,44 @@ class Base:
     def __exit__(self, exc_type, exc_value, traceback):
         pass
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            if hasattr(self, 'coerce'):
+                coerce = getattr(self, 'coerce')
+                other = coerce(other)
+            elif isinstance(other, dict):
+                try:
+                    other = self.__class__(other)
+                except ValueError:
+                    return False
+            else:
+                return False
+
+        if type(other) is not type(self):
+            return False
+
+        if id(self) == id(other):
+            return True
+
+        for name in self.meta.fields:
+            if self[name] != other[name]:
+                return False
+
+        return True
+
+    def items(self, by='rehashed'):
+        if by == 'rehashed':
+            for name in self.meta.fields:
+                if self.rehashed(name):
+                    yield name, getattr(self, name)
+
+        elif by == 'all':
+            for name in self.meta.fields:
+                yield name, getattr(self, name)
+
+        else:
+            raise ErrorWrong("by")
+
 class BaseModel(Base):
     """ Base model """
 
@@ -392,3 +445,72 @@ class BaseModel(Base):
     # def _name(self):
     #     """ Table name """
     #     return None
+
+    def key_for(self, key_def=None):
+        if key_def is None:
+            key_def = self.meta.table.pkey
+
+        if isinstance(key_def, (tuple, list)):
+            return [getattr(self, x) for x in key_def]
+
+        return [getattr(self, key_def)]
+
+    @classmethod
+    def sqlbase(cls):
+        paths = ['model']
+        name = re.sub(r'([A-Z])', r'_\1', cls.__name__)
+        if name.startswith('_'):
+            name = name[1:]
+
+        paths.append(name.lower())
+
+        return os.path.join(*paths)
+
+    @classmethod
+    def get_db(cls, dbdef=None, key=None):
+        if dbdef is None:
+            if cls.database is not None:
+                return {'db': cls.database}
+
+            return {}
+
+        db = copy.copy(dbdef).pop('db', cls.database)
+        return {
+            **dbdef,
+            'db': db,
+        }
+
+    async def save(self, db=None, **kw):
+        db = self.get_db(db)
+
+        for k, v in self.meta.fields.items():
+            if 'db_vars' in v.tags:
+                value = getattr(self, k)
+
+                if hasattr(value, 'rehashed'):
+                    if value.rehashed():
+                        self.rehashed(name=True)
+
+        sql, bindvars = sqlt('save.sqlt', {
+            'key_def': 'id',
+            'key_tuple': self.key_for(self.meta.table.pkey),
+            'table': self.meta.table,
+            'this': self,
+            'sqlbase': self.sqlbase(),
+            'shard': db.get('shard'),
+        })
+
+        async with dbh(**db) as conn:
+            data = await conn.fetchrow(sql, *bindvars)
+
+            if not data:
+                raise Exception('Save exception')
+
+            for k, v in data.items():
+                if k not in self.meta.fields:
+                    continue
+
+                setattr(self, k, v)
+
+            self.rehashed('-clean')
+            return self
