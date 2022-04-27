@@ -472,6 +472,45 @@ class Base:
             raise ErrorWrong("by")
 
 
+class Pager():
+    def __init__(self, offset=0, limit=25, page=None, full=False, **kw):
+        self.page = page if page else int(offset // limit) + 1
+        self.disabled = full
+        self.latest = full
+        self.limit = limit
+        self.page = max(self.page, 1)
+
+        if self.limit > CURSOR_LIMIT:
+            self.limit = CURSOR_LIMIT
+        elif self.limit < 1:
+            self.limit = CURSOR_LIMIT
+
+        if self.disabled:
+            self.sql_offset = None
+            self.sql_limit = None
+        else:
+            self.sql_offset = (self.page - 1) * self.limit
+            self.sql_limit = self.limit + 1
+
+        self.list = []
+
+    def __iter__(self):
+        for item in self.list:
+            yield item
+
+    def __len__(self):
+        return len(self.list)
+
+    def __bool__(self):
+        return len(self.list) > 0
+
+    def pure_python(self):
+        return {
+            'latest': self.latest,
+            'page': self.page,
+            'list': self.list
+        }
+
 class Cursor(Base):
     """ Cursor """
 
@@ -662,38 +701,41 @@ class BaseModel(Base):
         return self
 
     @classmethod
-    async def get(cls, ids=None, db=None, cursor=None, **kw):
+    async def get(cls, ids=None, limit=None, offset=None, cursor=None, **kw):
         """ Get instances of the object """
 
-        db = cls.get_db(db)
+        db = cls.get_db()
+
+        kw = {
+            **kw,
+            'table': cls.meta.table,
+            'sqlbase': cls.sqlbase(),
+            'shard': db.get('shard'),
+        }
+        if 'sort' in kw and isinstance(kw['sort'], str):
+            kw['sort'] = [kw['sort']]
 
         if ids:
+            tmp = 'load.sqlt'
             kw = {
                 **kw,
                 'key_def': ('id',),
                 'key': ids,
                 'key_tuple': ids if isinstance(ids, (list, tuple)) else [ids],
                 'class': cls,
-                'table': cls.meta.table,
-                'sqlbase': cls.sqlbase(),
-                'shard': db.get('shard'),
             }
+
+        elif offset is not None:
+            tmp = 'list.sqlt'
+            pager = Pager(**kw)
+            kw['pager'] = pager
 
         else:
-            kw = {
-                **kw,
-                'table': cls.meta.table,
-                'sqlbase': cls.sqlbase(),
-                'shard': db.get('shard'),
-            }
-
-            if 'sort' in kw and isinstance(kw['sort'], str):
-                kw['sort'] = [kw['sort']]
-
+            tmp = 'full.sqlt'
             cursor = Cursor(kw)
             kw['cursor'] = cursor
 
-        sql, args = sqlt('load.sqlt' if ids else 'list.sqlt', kw)
+        sql, args = sqlt(tmp, kw)
 
         async with dbh(**db) as conn:
             data = await conn.fetch(sql, *args)
@@ -707,6 +749,21 @@ class BaseModel(Base):
                 data.actual_shard = db['shard']
 
             return data
+
+        if offset is not None:
+            if not pager.disabled:
+                if len(data) <= pager.limit:
+                    pager.latest = True
+                while len(data) > pager.limit:
+                    pager.latest = False
+                    data.pop(len(data) - 1)
+
+            for i, row in enumerate(data):
+                data[i] = cls(row)
+
+            pager.list = data
+
+            return pager.list
 
         cursor.list = [cls(x) for x in data]
 

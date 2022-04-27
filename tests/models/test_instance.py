@@ -69,9 +69,11 @@ async def test_simple():
     assert str(user)[:11] == "Object User"
 
     await user.save()
+    user_id = user.id
+    assert isinstance(user_id, int)
 
-    user = await User.get(1)
-    assert user.id == 1
+    user = await User.get(user_id)
+    assert user.id == user_id
     assert user.login == 'kosyachniy'
     assert user.name == 'Alexey'
 
@@ -79,6 +81,9 @@ async def test_simple():
     await user.save()
     await user.reload()
     assert user.name == 'Alex'
+
+    users = await User.get(offset=0)
+    assert len(users) == 1
 
     users, cursor = await User.get()
     assert len(users) == 1
