@@ -5,4 +5,6 @@ SELECT * FROM "{{ table.name |i }}" WHERE TRUE
             "{{ row |i }}" ASC
         {% endfor %}
 {%- endif %}
+{% if not pager.disabled -%}
     LIMIT  {{ pager.sql_limit  |i }} OFFSET {{ pager.sql_offset |i }}
+{%- endif %}

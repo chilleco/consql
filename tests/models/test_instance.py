@@ -82,20 +82,27 @@ async def test_simple():
     await user.reload()
     assert user.name == 'Alex'
 
-    users = await User.get(offset=0)
-    assert len(users) == 1
-
     users, cursor = await User.get()
     assert len(users) == 1
     assert cursor
 
+    user = User(
+        login='pyos',
+        name='Evgeniy',
+        surname='Zaycev',
+    )
+    await user.save()
+
+    users = await User.get(offset=1)
+    assert len(users) == 1
+
     assert user.json() == {
-        'id': 1,
+        'id': user_id+1,
         'status': 'authorized',
         'image': None,
-        'login': 'kosyachniy',
-        'name': 'Alex',
-        'surname': 'Poloz',
+        'login': 'pyos',
+        'name': 'Evgeniy',
+        'surname': 'Zaycev',
         'mail': None,
         'password': None,
         'phone': None,
@@ -103,6 +110,8 @@ async def test_simple():
         'birthday': None,
     }
 
+    await user.rm()
+    user = await User.get(user_id)
     await user.rm()
 
     users, cursor = await User.get()

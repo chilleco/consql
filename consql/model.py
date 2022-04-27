@@ -473,11 +473,11 @@ class Base:
 
 
 class Pager():
-    def __init__(self, offset=0, limit=25, page=None, full=False, **kw):
-        self.page = page if page else int(offset // limit) + 1
+    def __init__(self, offset=0, limit=None, page=None, full=False, **kw):
+        self.limit = limit or CURSOR_LIMIT
+        self.page = page or int(offset // self.limit) + 1
         self.disabled = full
         self.latest = full
-        self.limit = limit
         self.page = max(self.page, 1)
 
         if self.limit > CURSOR_LIMIT:
@@ -489,8 +489,8 @@ class Pager():
             self.sql_offset = None
             self.sql_limit = None
         else:
-            self.sql_offset = (self.page - 1) * self.limit
-            self.sql_limit = self.limit + 1
+            self.sql_offset = offset or (self.page - 1) * self.limit
+            self.sql_limit = limit or self.limit + 1
 
         self.list = []
 
@@ -727,7 +727,7 @@ class BaseModel(Base):
 
         elif offset is not None:
             tmp = 'list.sqlt'
-            pager = Pager(**kw)
+            pager = Pager(offset=offset, limit=limit, **kw)
             kw['pager'] = pager
 
         else:
