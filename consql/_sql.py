@@ -19,10 +19,6 @@ import jinja2.ext
 import jinja2.nodes
 
 
-SQLT_DIRECTORY = 'consql/tsql'
-SQLT_CACHE = ['*.sqlt']
-
-
 _bindValues = local()
 
 
@@ -309,8 +305,8 @@ class _sqlt_agent(agent):
         return sql, bindvars
 
     def __init__(self):
-        directory = os.path.join('.', SQLT_DIRECTORY)
-        patterns = SQLT_CACHE
+        directory = os.path.join('.', cfg('pg.sqlt_path', 'tsql'))
+        patterns = ['*.sqlt']
         files = []
 
         for pattern in patterns:

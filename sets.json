@@ -5,6 +5,7 @@
         "db": "main",
         "user": "postgres",
         "pass": "password",
-        "debug": "explain,inline,copy"
+        "debug": "explain,inline,copy",
+        "sqlt_path": "consql/tsql"
     }
 }

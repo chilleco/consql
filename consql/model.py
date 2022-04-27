@@ -651,12 +651,8 @@ class BaseModel(Base):
             'shard': db.get('shard'),
         })
 
-        print(sql, args)
-
         async with dbh(**db) as conn:
             data = await conn.fetchrow(sql, *args)
-
-        print(data)
 
         if not data:
             raise Exception('Save exception')
