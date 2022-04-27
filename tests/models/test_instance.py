@@ -3,7 +3,7 @@ import datetime
 import pytest
 from libdev.codes import USER_STATUSES, LOCALES
 
-from . import Base, Attribute, Table
+from . import Base, Attribute, Table, coerces
 
 
 class User(Base, table=Table('users')):
@@ -29,14 +29,14 @@ class User(Base, table=Table('users')):
     birthday = Attribute(
         types=datetime.date,
         required=False,
-        # coerce=coerces.date,
+        coerce=coerces.date,
     )
-    # tags=Attribute(
-    #     types=list,
-    #     required=True,
-    #     default=lambda: [],
-    #     tags='db_default',
-    # )
+    tags=Attribute(
+        types=list,
+        required=True,
+        default=lambda: [],
+        tags='db_default',
+    )
     # extra=Attribute(
     #     types=Vars,
     #     required=False,
@@ -45,18 +45,18 @@ class User(Base, table=Table('users')):
     #     always_coerce=True,
     #     tags='db_vars',
     # )
-    # created=Attribute(
-    #     types=datetime.datetime,
-    #     required=False,
-    #     default=now,
-    #     coerce=coerces.date_time,
-    # )
-    # updated=Attribute(
-    #     types=datetime.datetime,
-    #     required=False,
-    #     default=now,
-    #     coerce=coerces.date_time,
-    # )
+    created=Attribute(
+        types=datetime.datetime,
+        required=False,
+        default=coerces.now,
+        coerce=coerces.date_time,
+    )
+    updated=Attribute(
+        types=datetime.datetime,
+        required=False,
+        default=coerces.now,
+        coerce=coerces.date_time,
+    )
 
 
 @pytest.mark.asyncio
@@ -108,6 +108,9 @@ async def test_simple():
         'phone': None,
         'lang': None,
         'birthday': None,
+        'tags': [],
+        'created': user.created,
+        'updated': user.updated,
     }
 
     await user.rm()
