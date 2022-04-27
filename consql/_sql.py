@@ -1,3 +1,9 @@
+"""
+JSON handler
+"""
+
+# pylint: disable=super-with-arguments,too-many-function-args
+
 import json
 import datetime
 import glob
@@ -5,14 +11,12 @@ import os
 import os.path
 import re
 import sys
-import json
 from threading import local
 
 from libdev.cfg import cfg
 import jinja2
 import jinja2.ext
 import jinja2.nodes
-import jinja2
 
 
 SQLT_DIRECTORY = 'consql/tsql'
@@ -174,7 +178,7 @@ class agent():
             loader=loader,
             extensions=[
                 _BindSQLFragmentExtension
-            ]
+            ],
         )
 
         if json_encoder:
@@ -256,8 +260,7 @@ def _sql_variable_inline(sql, bindvars):
 class _sqlt_agent(agent):
     def __call__(self, name: str, args: dict=None):
 
-        dump_str = cfg('pg.debug')
-
+        dump_str = cfg('pg.debug', '')
         if not dump_str:
             return super().__call__(name, args)
 

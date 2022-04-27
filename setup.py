@@ -49,9 +49,9 @@ setup(
     python_requires='>=3.7, <4',
     install_requires=[
         'asyncpg==0.25.0',
-        'libdev==0.27',
+        'libdev==0.28',
         'jinja2==3.1.1',
-        'pytz==2022.1',
+        'orjson==3.6.8',
     ],
     project_urls={
         'Source': 'https://github.com/kosyachniy/consql',

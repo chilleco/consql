@@ -259,11 +259,6 @@ class Base:
     meta = None
     _rehashed: set = None
 
-    @property
-    @abstractmethod
-    def database(self):
-        pass
-
     def __new__(cls, *arg, **kwarg):
         self = super().__new__(cls)
         self._rehashed = set()
@@ -323,7 +318,6 @@ class Base:
     def __init_subclass__(
         cls,
         meta_class=Meta,
-        plugins_namespace=None,
         **kwargs,
     ):
         cls.meta = meta_class(
@@ -551,14 +545,28 @@ class BaseModel(Base):
     #     """ Table name """
     #     return None
 
-    def key_for(self, key_def=None):
-        if key_def is None:
-            key_def = self.meta.table.pkey
+    def get_key(self, key=None):
+        if key is None:
+            key = self.meta.table.pkey
 
-        if isinstance(key_def, (tuple, list)):
-            return [getattr(self, x) for x in key_def]
+        if isinstance(key, (tuple, list)):
+            return [getattr(self, x) for x in key]
 
-        return [getattr(self, key_def)]
+        return [getattr(self, key)]
+
+    @classmethod
+    def get_db(cls, db=None):
+        data = copy.copy(db)
+        if data is None:
+            data = {}
+
+        if cls.database and 'db' not in data:
+            data = {
+                **data,
+                'db': cls.database,
+            }
+
+        return data
 
     @classmethod
     def sqlbase(cls):
@@ -577,20 +585,6 @@ class BaseModel(Base):
             subpath += '.sqlt'
         return os.path.join(cls.sqlbase(), subpath)
 
-    @classmethod
-    def get_db(cls, dbdef=None, key=None):
-        if dbdef is None:
-            if cls.database is not None:
-                return {'db': cls.database}
-
-            return {}
-
-        db = copy.copy(dbdef).pop('db', cls.database)
-        return {
-            **dbdef,
-            'db': db,
-        }
-
     async def save(self, db=None, **kw):
         db = self.get_db(db)
 
@@ -602,10 +596,10 @@ class BaseModel(Base):
                     if value.rehashed():
                         self.rehashed(name=True)
 
-        sql, bindvars = sqlt('save.sqlt', {
+        sql, args = sqlt('save.sqlt', {
             **kw,
             'key_def': 'id',
-            'key_tuple': self.key_for(self.meta.table.pkey),
+            'key_tuple': self.get_key(),
             'table': self.meta.table,
             'this': self,
             'sqlbase': self.sqlbase(),
@@ -613,7 +607,7 @@ class BaseModel(Base):
         })
 
         async with dbh(**db) as conn:
-            data = await conn.fetchrow(sql, *bindvars)
+            data = await conn.fetchrow(sql, *args)
 
         if not data:
             raise Exception('Save exception')
@@ -632,19 +626,18 @@ class BaseModel(Base):
 
         db = self.get_db(db)
 
-        sql, bindvars = sqlt('rm.sqlt', {
+        sql, args = sqlt('rm.sqlt', {
             **kw,
             'key_def': ['id'],
-            'key_tuple': self.key_for(self.meta.table.pkey),
+            'key_tuple': self.get_key(),
             'table': self.meta.table,
             'this': self,
             'sqlbase': self.sqlbase(),
             'shard': db.get('shard'),
-
         })
 
         async with dbh(**db) as conn:
-            data = await conn.fetchrow(sql, *bindvars)
+            data = await conn.fetchrow(sql, *args)
 
         if not data:
             raise Exception('Remove exception')
@@ -695,10 +688,10 @@ class BaseModel(Base):
         async with dbh(**db) as conn:
             data = await conn.fetch(sql, *args)
 
-        if not data:
-            return None
-
         if ids:
+            if not data:
+                return None
+
             data = cls(data[0])
             if isinstance(db, dict) and 'shard' in db:
                 data.actual_shard = db['shard']
@@ -719,7 +712,7 @@ class BaseModel(Base):
         After calling this function, all unsaved instance data will be erased
         """
 
-        data = await self.get(self.key_for(self.meta.table.pkey), **kw)
+        data = await self.get(self.get_key(), **kw)
         self.rehash(**dict(data.items('all')))
         self.rehashed('-clean')
         return self

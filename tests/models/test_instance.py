@@ -99,3 +99,6 @@ async def test_simple():
     }
 
     await user.rm()
+
+    users, cursor = await User.get()
+    assert len(users) == 0

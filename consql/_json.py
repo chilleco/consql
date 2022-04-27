@@ -1,29 +1,36 @@
+"""
+JSON handler
+"""
+
+# pylint: disable=no-member,missing-function-docstring
+# pylint: disable=too-many-return-statements
+
 import datetime
 from decimal import Decimal
 
 import orjson
 
 
-def _default(o):
-    if hasattr(o, 'json'):
-        return o.json()
-    if isinstance(o, datetime.date):
-        return o.strftime('%F')
-    if isinstance(o, datetime.time):
-        return o.strftime('%T')
-    if isinstance(o, Decimal):
-        return str(o)
-    if isinstance(o, dict):
-        return dict(o)
-    if isinstance(o, set):
-        return set(o)
-    if isinstance(o, list):
-        return list(o)
-    if isinstance(o, tuple):
-        return tuple(o)
+def _default(value):
+    if hasattr(value, 'json'):
+        return value.json()
+    if isinstance(value, datetime.date):
+        return value.strftime('%F')
+    if isinstance(value, datetime.time):
+        return value.strftime('%T')
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, set):
+        return set(value)
+    if isinstance(value, list):
+        return list(value)
+    if isinstance(value, tuple):
+        return tuple(value)
 
     raise TypeError(
-        f"Object of type '{o.__class__.__name__}' is not JSON serializable")
+        f"Object of type '{value.__class__.__name__}' is not JSON serializable")
 
 def dumps(obj, **kw):
     kw.pop('ensure_ascii', None)
@@ -44,5 +51,5 @@ def dumps(obj, **kw):
 
     return result
 
-def loads(s, **kw):
-    return orjson.loads(s, **kw)
+def loads(data, **kw):
+    return orjson.loads(data, **kw)

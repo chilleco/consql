@@ -2,7 +2,6 @@
 Database
 """
 
-import typing
 import asyncio
 import random
 import sys
@@ -53,12 +52,9 @@ CHECK_QUERY = '''SELECT pg_is_in_recovery() AS "replica", COALESCE(
 
 class PgDsnParser:
     REQUIRED_DSN_FIELDS = ('host', 'port', 'dbname', 'user', 'password')
-    hosts: typing.List[typing.Dict]
+    hosts: list
 
-    def __init__(
-        self,
-        dsnstr: typing.Union[str, typing.Dict[str, typing.Any]],
-    ):
+    def __init__(self, dsnstr):
         if isinstance(dsnstr, str):
             dsn = map(lambda x: re.split('=', x, 1), re.split(r'\s+', dsnstr))
             dsn = dict(dsn)
@@ -114,13 +110,13 @@ class PgDsnParser:
 class PgShardConnectionContext:
     __slots__ = ('pgshard', 'mode', 'pool', 'conn',)
 
-    def __init__(self, pgshard: 'PgShard', mode: str):
+    def __init__(self, pgshard, mode):
         self.pgshard = pgshard
         self.mode = mode
-        self.pool: typing.Optional[Pool] = None
-        self.conn: typing.Optional[PoolConnectionProxy] = None
+        self.pool = None
+        self.conn = None
 
-    async def __aenter__(self) -> PoolConnectionProxy:
+    async def __aenter__(self):
         self.pool, self.conn = await self.pgshard.acquire(self.mode)
 
         return self.conn
@@ -131,38 +127,28 @@ class PgShardConnectionContext:
 
         await pool.release(conn)
 
-
 class PgShardConnection(Connection):
-    hostno: int = 0
-    mode: str = 'not_connected'
-    shardno: int = 0
-    name: typing.Optional[str] = None
+    hostno = 0
+    mode = 'not_connected'
+    shardno = 0
+    name = None
 
     def __repr__(self):
         return '<PgShardConnection[{}].{}#{}>'.format(
             self.name, self.mode, self.shardno,
         )
 
-
 class PgShard:
     query_last_time = 0
     check_last_time = 0
     check_interval = 10
     check_sleep = 0.5
-    check_is_running: bool = False
-    check_task: typing.Optional[asyncio.Task] = None
+    check_is_running = False
+    check_task = None
 
     slow_lag = 25
 
-    def __init__(
-            self,
-            dsnstr: str,
-            *,
-            name: str = None,
-            shardno: int = 0,
-            loop: typing.Optional[asyncio.AbstractEventLoop] = None,
-            **opts,
-    ):
+    def __init__(self, dsnstr, *, name=None, shardno=0, loop=None, **opts):
         self.dsnstr = dsnstr
         self.dsn = PgDsnParser(dsnstr)
         self.name = name or self.dsn.hosts[0]['dbname']
@@ -210,9 +196,7 @@ class PgShard:
 
         return False
 
-    async def acquire(
-            self,  mode: str,
-    ) -> typing.Tuple[Pool, PoolConnectionProxy]:
+    async def acquire(self,  mode):
         """ Get connection from the pool """
 
         await self._loop_changed()
@@ -245,13 +229,14 @@ class PgShard:
             realcon.mode = stat_host['mode']
 
             return pool, conn
+
         except (
-                OSError,
-                ConnectionError,
-                asyncio.TimeoutError,
-                PostgresConnectionError,
-                InterfaceError,
-        ) as exc:
+            OSError,
+            ConnectionError,
+            asyncio.TimeoutError,
+            PostgresConnectionError,
+            InterfaceError,
+        ):
             if mode != 'master':
                 stat_host['mode'] = 'not_connected'
 
@@ -313,15 +298,12 @@ class PgShard:
 
         pool = stat_host['pool']
         mode = stat_host['mode']
-        inited = stat_host.get('inited', False)
 
         server_settings = {
             'enable_seqscan': 'off',
             'enable_bitmapscan': 'off',
             'enable_sort': 'off',
         } if 'pytest' in sys.modules else {}
-
-        exc1 = None
 
         if not isinstance(pool, Pool):
             try:
@@ -342,7 +324,7 @@ class PgShard:
                     OSError,
                     ConnectionError,
                     asyncio.TimeoutError,
-            ) as exc:
+            ):
                 new_mode = 'not_connected'
 
         if isinstance(pool, Pool):
@@ -359,13 +341,14 @@ class PgShard:
                             new_mode = 'slave'
                     else:
                         new_mode = 'master'
+
             except (
                     OSError,
                     ConnectionError,
                     asyncio.TimeoutError,
                     PostgresConnectionError,
                     InterfaceError,
-            ) as exc:
+            ):
                 new_mode = 'not_connected'
 
         stat_host['pool'] = pool
@@ -378,7 +361,7 @@ class PgShard:
         if new_mode == 'not_connected':
             return
 
-    async def _seek_pool(self, mode: str) -> typing.Dict:
+    async def _seek_pool(self, mode):
         candidates = []
 
         for stat_host in self.stat.values():
@@ -413,7 +396,7 @@ class PgShard:
                     pool.terminate()
                 else:
                     await pool.close()
-        except Exception as exc:
+        except Exception:
             pass
         finally:
             stat_host['pool'] = None
@@ -447,24 +430,20 @@ class PgShard:
 
 
 class PgShards:
-    shards: typing.List[PgShard]
-    _name: typing.Optional[str] = None
+    shards: list
+    _name = None
 
-    def __init__(self,
-                 dsnstrs: typing.List[str],
-                 *,
-                 name: typing.Optional[str] = None,
-                 nshards: typing.Optional[int] = None,
-                 **opts):
-
+    def __init__(self, dsnstrs, *, name=None, nshards=None, **opts):
         self._name = name
         shards = []
 
         for shardno, dsnstr in enumerate(dsnstrs):
-            shard = PgShard(dsnstr,
-                            name=name,
-                            shardno=shardno,
-                            **opts)
+            shard = PgShard(
+                dsnstr,
+                name=name,
+                shardno=shardno,
+                **opts,
+            )
 
             shards.append(shard)
 
@@ -479,13 +458,7 @@ class PgShards:
             return self._name
         return self.shards[0].name
 
-    def __call__(self,
-                 *,
-                 shard: typing.Optional[int] = None,
-                 mode: str = 'master',
-                 key: typing.Union[typing.List, str, int, None] = None,
-                 eid: typing.Optional[str] = None):
-
+    def __call__(self, *, shard=None, mode='master', key=None, eid=None):
         if shard is None:
             shard = 0
 
@@ -521,23 +494,20 @@ class Dbh:
                 PgShards(shards, name=dbname, **dbcfg)
             )
 
-    def __call__(
-        self,
-        *,
-        db: typing.Optional[str] = None,
-        mode: typing.Optional[str] = 'master',
-        shard: typing.Optional[int] = None
-    ):
+    def __call__( self, *, db=None, mode='master', shard=None):
         if not db:
             db = self.default_database
+
         if not hasattr(self, db):
             raise ValueError(f'Unknown database: {db}')
+
         shards = getattr(self, db)
         return shards(mode=mode, shard=shard)
 
     def nshards(self, db: str):
         if not hasattr(self, db):
             raise ValueError(f'Unknown database: {db}')
+
         dbshards = getattr(self, db)
         return dbshards.nshards
 
