@@ -62,7 +62,6 @@ class User(Base, table=Table('users')):
 @pytest.mark.asyncio
 async def test_simple():
     user = User(
-        id=1,
         login='kosyachniy',
         name='Alexey',
         surname='Poloz',
@@ -72,6 +71,7 @@ async def test_simple():
     await user.save()
 
     user = await User.get(1)
+    assert user.id == 1
     assert user.login == 'kosyachniy'
     assert user.name == 'Alexey'
 

@@ -1,10 +1,10 @@
 WITH "saved" AS (
     INSERT INTO "{{ table.name |i }}" (
-        {% for name, value in this.items('all') -%}
+        {% for name, value in this.items('new') -%}
             "{{ name |i }}"{% if not loop.last %},{% endif %}
         {% endfor %}
     ) VALUES (
-        {% for name, value in this.items('all') -%}
+        {% for name, value in this.items('new') -%}
             {%- if value is none -%}
                 {%- if 'db_default' in this.meta.fields[name].tags -%}
                     DEFAULT

@@ -462,6 +462,12 @@ class Base:
             for name in self.meta.fields:
                 yield name, getattr(self, name)
 
+        elif by == 'new':
+            for name in self.meta.fields:
+                if name in self.meta.table.pkey and getattr(self, name) is None:
+                    continue
+                yield name, getattr(self, name)
+
         else:
             raise ErrorWrong("by")
 
@@ -606,8 +612,12 @@ class BaseModel(Base):
             'shard': db.get('shard'),
         })
 
+        print(sql, args)
+
         async with dbh(**db) as conn:
             data = await conn.fetchrow(sql, *args)
+
+        print(data)
 
         if not data:
             raise Exception('Save exception')
