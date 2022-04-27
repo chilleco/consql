@@ -260,7 +260,7 @@ def _sql_variable_inline(sql, bindvars):
 class _sqlt_agent(agent):
     def __call__(self, name: str, args: dict=None):
 
-        dump_str = cfg('pg.debug', '')
+        dump_str = cfg('db.debug', '')
         if not dump_str:
             return super().__call__(name, args)
 

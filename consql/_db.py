@@ -13,20 +13,19 @@ from libdev.cfg import cfg
 import asyncpg
 from asyncpg.connection import Connection
 from asyncpg.exceptions import InterfaceError, PostgresConnectionError
-from asyncpg.pool import Pool, PoolConnectionProxy
+from asyncpg.pool import Pool
 
 from .errors import ErrorWrong
-
 
 PG_DEFAULT_DB = 'main'
 DBS = {
     'main': {
         'migrations': 'db/postgresql/main',
         'shards': [{
-            'host': f"{cfg('pg.host')}:{cfg('pg.port')}",
-            'dbname': cfg('pg.db'),
-            'user': cfg('pg.user'),
-            'password': cfg('pg.pass')
+            'host': cfg('consql.host'),
+            'user': cfg('consql.user'),
+            'password': cfg('consql.pass'),
+            'dbname': cfg('consql.db'),
         }],
         'recheck_timeout': 15,
         'pool_min_size': 10,
