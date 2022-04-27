@@ -73,23 +73,29 @@ async def test_simple():
 
     user = await User.get(1)
     assert user.login == 'kosyachniy'
+    assert user.name == 'Alexey'
+
+    user.name = 'Alex'
+    await user.save()
+    await user.reload()
+    assert user.name == 'Alex'
 
     users, cursor = await User.get()
     assert len(users) == 1
     assert cursor
 
-    # assert user.json() == {
-    #     'id': 1,
-    #     'status': 'authorized',
-    #     'image': None,
-    #     'login': 'kosyachniy',
-    #     'name': 'Alexey',
-    #     'surname': 'Poloz',
-    #     'mail': None,
-    #     'password': None,
-    #     'phone': None,
-    #     'lang': None,
-    #     'birthday': None,
-    # }
+    assert user.json() == {
+        'id': 1,
+        'status': 'authorized',
+        'image': None,
+        'login': 'kosyachniy',
+        'name': 'Alex',
+        'surname': 'Poloz',
+        'mail': None,
+        'password': None,
+        'phone': None,
+        'lang': None,
+        'birthday': None,
+    }
 
     await user.rm()

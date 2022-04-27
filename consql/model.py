@@ -669,7 +669,7 @@ class BaseModel(Base):
                 **kw,
                 'key_def': ('id',),
                 'key': ids,
-                'key_tuple': [ids],
+                'key_tuple': ids if isinstance(ids, (list, tuple)) else [ids],
                 'class': cls,
                 'table': cls.meta.table,
                 'sqlbase': cls.sqlbase(),
@@ -712,3 +712,14 @@ class BaseModel(Base):
                 item.actual_shard = db['shard']
 
         return cursor.list, cursor.cursor_str
+
+    async def reload(self, **kw):
+        """ Update the instance according to the data from the DB
+
+        After calling this function, all unsaved instance data will be erased
+        """
+
+        data = await self.get(self.key_for(self.meta.table.pkey), **kw)
+        self.rehash(**dict(data.items('all')))
+        self.rehashed('-clean')
+        return self
