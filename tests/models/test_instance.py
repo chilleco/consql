@@ -4,6 +4,7 @@ import pytest
 from libdev.codes import USER_STATUSES, LOCALES
 
 from . import Base, Attribute, Table, coerces
+from consql.coerces import date, date_time
 
 
 class User(Base, table=Table('users')):
@@ -29,7 +30,7 @@ class User(Base, table=Table('users')):
     birthday = Attribute(
         types=datetime.date,
         required=False,
-        coerce=coerces.date,
+        coerce=date,
     )
     tags=Attribute(
         types=list,
@@ -49,13 +50,13 @@ class User(Base, table=Table('users')):
         types=datetime.datetime,
         required=False,
         default=coerces.now,
-        coerce=coerces.date_time,
+        coerce=date_time,
     )
     updated=Attribute(
         types=datetime.datetime,
         required=False,
         default=coerces.now,
-        coerce=coerces.date_time,
+        coerce=date_time,
     )
 
 

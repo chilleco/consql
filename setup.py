@@ -49,7 +49,7 @@ setup(
     python_requires='>=3.7, <4',
     install_requires=[
         'asyncpg==0.25.0',
-        'libdev==0.28',
+        'libdev>=0.29', # Because conflicts with main repo
         'jinja2==3.1.1',
         'orjson==3.6.8',
         'pydantic==1.9.0',
