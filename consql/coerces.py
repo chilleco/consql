@@ -4,7 +4,7 @@ from dateutil.parser import parse
 
 
 def now():
-    return datetime.datetime.now()
+    return datetime.datetime.now().replace(microsecond=0)
 
 def time2time(value):
     if value is None:

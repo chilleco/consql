@@ -52,6 +52,7 @@ setup(
         'libdev==0.28',
         'jinja2==3.1.1',
         'orjson==3.6.8',
+        'pydantic==1.9.0',
     ],
     project_urls={
         'Source': 'https://github.com/kosyachniy/consql',
