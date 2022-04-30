@@ -3,7 +3,7 @@ import datetime
 import pytest
 from libdev.codes import USER_STATUSES, LOCALES
 
-from . import Base, Attribute, Table
+from . import Base, Attribute, Table, Extra
 from consql import coerces
 
 
@@ -38,14 +38,14 @@ class User(Base, table=Table('users')):
         default=lambda: [],
         tags='db_default',
     )
-    # extra = Attribute(
-    #     types=Vars,
-    #     required=False,
-    #     default=lambda: {},
-    #     coerce=Vars.coerce,
-    #     always_coerce=True,
-    #     tags='db_vars',
-    # )
+    extra = Attribute(
+        types=Extra,
+        required=False,
+        default=lambda: {},
+        coerce=Extra.coerce,
+        always=True,
+        tags='db_extra',
+    )
     created = Attribute(
         types=datetime.datetime,
         required=False,
@@ -110,6 +110,7 @@ async def test_simple():
         'lang': None,
         'birthday': None,
         'tags': [],
+        'extra': {},
         'created': user.created,
         'updated': user.updated,
     }

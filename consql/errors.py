@@ -7,7 +7,7 @@ class BaseError(Exception):
 
     code = 0
 
-    def __init__(self, field):
+    def __init__(self, field=''):
         self.txt = field
 
         super().__init__()

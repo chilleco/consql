@@ -13,7 +13,7 @@ WITH "saved" AS (
                 {%- endif -%}
             {%- elif 'db_json' in this.meta.fields[name].tags -%}
                 {{ value |j }}::JSONB
-            {%- elif 'db_vars' in this.meta.fields[name].tags -%}
+            {%- elif 'db_extra' in this.meta.fields[name].tags -%}
                 {{ value.result_dict |j }}::JSONB
             {%- else -%}
                 {{ value }}
@@ -53,7 +53,7 @@ WITH "saved" AS (
 
         {% if updated %}
             {% for name, value in updated.items() %}
-                {% if 'db_vars' in this.meta.fields[name].tags %}
+                {% if 'db_extra' in this.meta.fields[name].tags %}
                     "{{ name |i }}" = "libstall_vars_update"(
                             "{{ table.name |i }}"."{{ name |i }}",
                             {{ value.updated_dict |j }}::JSONB,

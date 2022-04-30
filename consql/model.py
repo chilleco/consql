@@ -7,10 +7,10 @@ import base64
 import hashlib
 from abc import abstractmethod
 
-from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
+from . import _json as json
 from ._db import dbh
 from ._sql import sqlt
-from . import _json as json
+from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
 
 
 TOKEN = ''
@@ -634,7 +634,7 @@ class BaseModel(Base):
         db = self.get_db(db)
 
         for k, v in self.meta.fields.items():
-            if 'db_vars' in v.tags:
+            if 'db_extra' in v.tags:
                 value = getattr(self, k)
 
                 if hasattr(value, 'rehashed'):
@@ -779,3 +779,69 @@ class BaseModel(Base):
         self.rehash(**dict(data.items('all')))
         self.rehashed('-clean')
         return self
+
+class Extra(dict):
+    _rehashed = None
+    owner = None
+    field_name = None
+
+    def _set_owner_rehashed(self):
+        if not self.owner:
+            return
+        if not self.field_name:
+            return
+        self.owner.rehashed(self.field_name, True)
+
+    def __init__(self, *args, owner=None, field_name=None, **kwargs):
+        self._rehashed = {}
+        self.owner = owner
+        self.field_name = field_name
+        super().__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        self._rehashed[key] = True
+        self._set_owner_rehashed()
+        return super().__setitem__(key, value)
+
+    def __delitem__(self, key):
+        self._rehashed[key] = None
+        self._set_owner_rehashed()
+        return super().__delitem__(key)
+
+    def rehashed(self):
+        if self._rehashed:
+            return True
+        return False
+
+    def clean_rehashed(self):
+        self._rehashed = {}
+
+    @property
+    def result_dict(self):
+        return dict(self)
+
+    @property
+    def updated_dict(self):
+        res = {}
+        for k, v in self._rehashed.items():
+            if v:
+                res[k] = self[k]
+        return res
+
+    @property
+    def deleted_keys(self):
+        return [k for k, v in self._rehashed.items() if v is None]
+
+    @classmethod
+    def coerce(cls, value, self=None, field=None):
+        if not self:
+            raise ErrorRequest('extra')
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            value = json.loads(value)
+        return cls(value, owner=self, field_name=field.name)
+
+    def postgresql(self):
+        return self.result_dict
