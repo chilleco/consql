@@ -54,7 +54,7 @@ WITH "saved" AS (
         {% if updated %}
             {% for name, value in updated.items() %}
                 {% if 'db_extra' in this.meta.fields[name].tags %}
-                    "{{ name |i }}" = "libstall_vars_update"(
+                    "{{ name |i }}" = "extra_update"(
                             "{{ table.name |i }}"."{{ name |i }}",
                             {{ value.updated_dict |j }}::JSONB,
                             ARRAY[{{ value.deleted_keys |vlist }}]::TEXT[])

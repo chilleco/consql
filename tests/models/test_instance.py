@@ -68,6 +68,7 @@ async def test_simple():
         login=user_login,
         name='Alexey',
         surname='Poloz',
+        extra={-12: "белый"},
     )
     assert str(user)[:11] == "Object User"
 
