@@ -6,6 +6,6 @@
         "user": "postgres",
         "pass": "password",
         "debug": "explain,inline,copy",
-        "sqlt_path": "consql/tsql"
+        "sqlt_path": "tsql"
     }
 }

@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 from libdev.codes import USER_STATUSES, LOCALES
+from libdev.gen import generate
 
 from . import Base, Attribute, Table, Extra
 from consql import coerces
@@ -62,8 +63,9 @@ class User(Base, table=Table('users')):
 
 @pytest.mark.asyncio
 async def test_simple():
+    user_login = generate()
     user = User(
-        login='kosyachniy',
+        login=user_login,
         name='Alexey',
         surname='Poloz',
     )
@@ -75,7 +77,7 @@ async def test_simple():
 
     user = await User.get(user_id)
     assert user.id == user_id
-    assert user.login == 'kosyachniy'
+    assert user.login == user_login
     assert user.name == 'Alexey'
 
     user.name = 'Alex'
@@ -87,10 +89,13 @@ async def test_simple():
     assert len(users) == 1
     assert cursor
 
+    user_login = generate()
+    user_created = datetime.datetime.now() - datetime.timedelta(days=1)
     user = User(
-        login='pyos',
+        login=user_login,
         name='Evgeniy',
         surname='Zaycev',
+        created=user_created,
     )
     await user.save()
 
@@ -101,7 +106,7 @@ async def test_simple():
         'id': user_id+1,
         'status': 'authorized',
         'image': None,
-        'login': 'pyos',
+        'login': user_login,
         'name': 'Evgeniy',
         'surname': 'Zaycev',
         'mail': None,
@@ -111,7 +116,7 @@ async def test_simple():
         'birthday': None,
         'tags': [],
         'extra': {},
-        'created': user.created,
+        'created': user_created,
         'updated': user.updated,
     }
 
