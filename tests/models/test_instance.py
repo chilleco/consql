@@ -3,8 +3,8 @@ import datetime
 import pytest
 from libdev.codes import USER_STATUSES, LOCALES
 
-from . import Base, Attribute, Table, coerces
-from consql.coerces import date, date_time
+from . import Base, Attribute, Table
+from consql import coerces
 
 
 class User(Base, table=Table('users')):
@@ -30,15 +30,15 @@ class User(Base, table=Table('users')):
     birthday = Attribute(
         types=datetime.date,
         required=False,
-        coerce=date,
+        coerce=coerces.date,
     )
-    tags=Attribute(
+    tags = Attribute(
         types=list,
         required=True,
         default=lambda: [],
         tags='db_default',
     )
-    # extra=Attribute(
+    # extra = Attribute(
     #     types=Vars,
     #     required=False,
     #     default=lambda: {},
@@ -46,17 +46,17 @@ class User(Base, table=Table('users')):
     #     always_coerce=True,
     #     tags='db_vars',
     # )
-    created=Attribute(
+    created = Attribute(
         types=datetime.datetime,
         required=False,
         default=coerces.now,
-        coerce=date_time,
+        coerce=coerces.date_time,
     )
-    updated=Attribute(
+    updated = Attribute(
         types=datetime.datetime,
         required=False,
         default=coerces.now,
-        coerce=date_time,
+        coerce=coerces.date_time,
     )
 
 
