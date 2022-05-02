@@ -76,6 +76,16 @@ async def test_simple():
     user_id = user.id
     assert isinstance(user_id, int)
 
+    users, _ = await User.get(conditions=[
+        ('login', user_login),
+    ])
+    assert len(users) == 1
+
+    users, _ = await User.get(conditions=[
+        ('login', generate()),
+    ])
+    assert len(users) == 0
+
     user = await User.get(user_id)
     assert user.id == user_id
     assert user.login == user_login
@@ -87,7 +97,8 @@ async def test_simple():
     assert user.name == 'Alex'
 
     users, cursor = await User.get()
-    assert len(users) == 1
+    users_count = len(users)
+    assert users_count >= 1
     assert cursor
 
     user_login = generate()
@@ -101,7 +112,7 @@ async def test_simple():
     await user.save()
 
     users = await User.get(offset=1)
-    assert len(users) == 1
+    assert len(users) >= 1
 
     assert user.json() == {
         'id': user_id+1,
@@ -126,4 +137,4 @@ async def test_simple():
     await user.rm()
 
     users, cursor = await User.get()
-    assert len(users) == 0
+    assert len(users) == users_count - 1

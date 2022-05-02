@@ -21,7 +21,7 @@
 
 {%- macro _condition_tuple(condition) -%}
     {%- if condition|length > 3 -%}
-        {{ 'Неизвестный формат кондишена.' / 0 }}
+        {{ 'Unknown condition format' / 0 }}
     {%- elif condition|length == 3 -%}
         {%- set condition = {'name': condition[0], 'operator': condition[1], 'value': condition[2]} -%}
         {{ _condition_dict(condition) |i}}
@@ -29,7 +29,7 @@
         {%- set condition = {'name': condition[0], 'value': condition[1]} -%}
         {{ _condition_dict(condition) |i}}
     {%- else %}
-        {{ 'Кондишены не могут быть простым значением.' / 0 }}
+        {{ 'Conditions cannot be a simple value' / 0 }}
     {%- endif -%}
 {%- endmacro %}
 
@@ -45,6 +45,7 @@
                     AND {{ _condition_dict(condition) |i}}
                 {%- else -%}
                     {%- if condition[0] is string -%}
+                        {# #}
                         AND {{ _condition_tuple(condition) |i}}
                     {% else %}
                         AND (
@@ -62,6 +63,6 @@
             {%- endfor -%}
         {%- endif -%}
     {% else %}
-        {{ 'Кондишены не могут быть простым значением.' / 0 }}
+        {{ 'Conditions cannot be a simple value' / 0 }}
     {%- endif -%}
 {%- endif %}
