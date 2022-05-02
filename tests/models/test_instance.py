@@ -63,19 +63,21 @@ class User(Base, table=Table('users')):
 
 @pytest.mark.asyncio
 async def test_simple():
+    # Entity
     user_login = generate()
     user = User(
         login=user_login,
         name='Alexey',
         surname='Poloz',
-        extra={-12: "белый"},
     )
     assert str(user)[:11] == "Object User"
 
+    # Create
     await user.save()
     user_id = user.id
     assert isinstance(user_id, int)
 
+    # Conditions
     users, _ = await User.get(conditions=[
         ('login', user_login),
     ])
@@ -86,37 +88,50 @@ async def test_simple():
     ])
     assert len(users) == 0
 
+    # By primary key
     user = await User.get(user_id)
     assert user.id == user_id
     assert user.login == user_login
     assert user.name == 'Alexey'
 
+    # By specific key
+    user = await User.get(user_login, by='login')
+    assert isinstance(user, User)
+
+    # Edit
     user.name = 'Alex'
     await user.save()
+
+    # Reload
     await user.reload()
     assert user.name == 'Alex'
 
+    # Pager list
+    users = await User.get(offset=1)
+    assert len(users) >= 1
+
+    # Cursor list
     users, cursor = await User.get()
     users_count = len(users)
     assert users_count >= 1
     assert cursor
 
+    # Create
     user_login = generate()
     user_created = datetime.datetime.now() - datetime.timedelta(days=1)
     user = User(
         login=user_login,
         name='Evgeniy',
         surname='Zaycev',
+        extra={-12: "белый"},
         created=user_created,
     )
     await user.save()
 
-    users = await User.get(offset=1)
-    assert len(users) >= 1
-
+    # JSON
     assert user.json() == {
-        'id': user_id+1,
-        'status': 'authorized',
+        'id': user_id+1, # increment key
+        'status': 'authorized', # default value
         'image': None,
         'login': user_login,
         'name': 'Evgeniy',
@@ -127,14 +142,14 @@ async def test_simple():
         'lang': None,
         'birthday': None,
         'tags': [],
-        'extra': {},
-        'created': user_created,
-        'updated': user.updated,
+        'extra': {'-12': "белый"}, # int key → str
+        'created': user_created, # specified value
+        'updated': user.updated, # automatic value
     }
 
+    # Remove
     await user.rm()
     user = await User.get(user_id)
     await user.rm()
-
     users, cursor = await User.get()
     assert len(users) == users_count - 1

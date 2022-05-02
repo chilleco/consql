@@ -630,7 +630,7 @@ class BaseModel(Base):
             subpath += '.sqlt'
         return os.path.join(cls.sqlbase(), subpath)
 
-    async def save(self, db=None, **kw):
+    async def save(self, db=None, by='id', **kw):
         db = self.get_db(db)
 
         for k, v in self.meta.fields.items():
@@ -643,7 +643,7 @@ class BaseModel(Base):
 
         sql, args = sqlt('save.sqlt', {
             **kw,
-            'key_def': 'id',
+            'key_def': (by,) if isinstance(by, str) else by,
             'key_tuple': self.get_key(),
             'table': self.meta.table,
             'this': self,
@@ -666,14 +666,14 @@ class BaseModel(Base):
         self.rehashed('-clean')
         return self
 
-    async def rm(self, db=None, **kw):
+    async def rm(self, db=None, by='id', **kw):
         """ Remove """
 
         db = self.get_db(db)
 
         sql, args = sqlt('rm.sqlt', {
             **kw,
-            'key_def': ['id'],
+            'key_def': (by,) if isinstance(by, str) else by,
             'key_tuple': self.get_key(),
             'table': self.meta.table,
             'this': self,
@@ -697,7 +697,15 @@ class BaseModel(Base):
         return self
 
     @classmethod
-    async def get(cls, ids=None, limit=None, offset=None, cursor=None, **kw):
+    async def get(
+        cls,
+        ids=None,
+        limit=None,
+        offset=None,
+        cursor=None,
+        by='id',
+        **kw,
+    ):
         """ Get instances of the object """
 
         db = cls.get_db()
@@ -715,7 +723,7 @@ class BaseModel(Base):
             tmp = 'load.sqlt'
             kw = {
                 **kw,
-                'key_def': ('id',),
+                'key_def': (by,) if isinstance(by, str) else by,
                 'key': ids,
                 'key_tuple': ids if isinstance(ids, (list, tuple)) else [ids],
                 'class': cls,
