@@ -22,4 +22,4 @@ async def test_simple():
     for _ in range(2):
         await User(login=generate()).save()
     users, _ = await User.get(cursor=cursor)
-    assert len(users) == 100
+    assert len(users) == 2
