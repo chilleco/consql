@@ -567,8 +567,32 @@ class Cursor(Base):
             return CURSOR_LIMIT
         if limit < 1:
             return 1
-
         return limit
+
+class CursorExt(Cursor):
+    serial = Attribute(types=str, coerce=str)
+    direction = Attribute(types=str, required=True, default='DESC')
+
+    def __init__(self, row = None, **kw):
+        if row is None:
+            row = {}
+        if isinstance(row, CursorExt):
+            row = row.pure_python()
+
+        if isinstance(row, str):
+            data = unpack(TOKEN, row)
+
+            if data is None:
+                row = {}
+            elif isinstance(data, dict):
+                row = data.get('cursor', {})
+            else:
+                row = {}
+
+        row = copy.copy(row)
+        row['limit'] = self._force_limit(row.get('limit', None))
+
+        super().__init__(row, **kw)
 
 
 class BaseModel(Base):
@@ -729,22 +753,26 @@ class BaseModel(Base):
                 'class': cls,
             }
 
-        elif offset is not None:
+        elif offset is not None or by == 'pager':
             tmp = 'pager.sqlt'
             pager = Pager(offset=offset, limit=limit, **kw)
             kw['pager'] = pager
 
+        elif cursor is not None or by == 'cursor':
+            tmp = 'cursor.sqlt'
+            cursor = CursorExt(cursor or kw)
+            kw['cursor'] = cursor
+
         else:
             tmp = 'full.sqlt'
-            cursor = Cursor(kw)
-            kw['cursor'] = cursor
+            cursor = CursorExt(kw)
 
         sql, args = sqlt(tmp, kw)
 
         async with dbh(**db) as conn:
             data = await conn.fetch(sql, *args)
 
-        if ids:
+        if tmp == 'get.sqlt':
             if not data:
                 return None
 
@@ -754,7 +782,7 @@ class BaseModel(Base):
 
             return data
 
-        if offset is not None:
+        if tmp == 'pager.sqlt':
             if not pager.disabled:
                 if len(data) <= pager.limit:
                     pager.latest = True
@@ -770,6 +798,8 @@ class BaseModel(Base):
             return pager.list
 
         cursor.list = [cls(x) for x in data]
+        if cursor.list:
+            cursor.serial = str(cursor.list[-1].created)
 
         if isinstance(db, dict) and 'shard' in db:
             for item in cursor.list:

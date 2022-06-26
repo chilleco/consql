@@ -1,0 +1,15 @@
+SELECT * FROM "{{ table.name |i }}" WHERE TRUE
+{%- include "where.sqlt" %}
+{% if cursor.serial is not none %}
+    AND "created"
+        {% if cursor.direction == 'ASC' -%}
+            >
+        {%- elif cursor.direction == 'DESC' -%}
+            <
+        {%- else -%}
+            {{ "Unknown cursor direction"/0 }}
+        {%- endif %}
+            {{ cursor.serial |datetime }}
+{% endif %}
+ORDER BY "created" {{ cursor.direction |i }}
+LIMIT {{ cursor.limit |i }}

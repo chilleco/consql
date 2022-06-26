@@ -176,6 +176,7 @@ class agent():
                 _BindSQLFragmentExtension
             ],
         )
+        self._env.filters['datetime'] = lambda i: datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
 
         if json_encoder:
             self.json_encoder = json_encoder

@@ -1,5 +1,5 @@
 SELECT * FROM "{{ table.name |i }}" WHERE TRUE
-    {%- include "where.sqlt" %}
+{%- include "where.sqlt" %}
 {% if sort -%}
     ORDER BY
         {% for row in sort %}
