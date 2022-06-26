@@ -720,7 +720,7 @@ class BaseModel(Base):
             kw['sort'] = [kw['sort']]
 
         if ids:
-            tmp = 'load.sqlt'
+            tmp = 'get.sqlt'
             kw = {
                 **kw,
                 'key_def': (by,) if isinstance(by, str) else by,
@@ -730,7 +730,7 @@ class BaseModel(Base):
             }
 
         elif offset is not None:
-            tmp = 'list.sqlt'
+            tmp = 'pager.sqlt'
             pager = Pager(offset=offset, limit=limit, **kw)
             kw['pager'] = pager
 
