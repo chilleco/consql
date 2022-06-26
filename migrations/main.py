@@ -1,5 +1,5 @@
 import os
-from os.path import isfile
+import os.path
 import asyncio
 import asyncpg
 
@@ -13,10 +13,13 @@ async def main():
         database='main',
     )
 
-    migrations = sorted([f for f in os.listdir() if not isfile(f)])
+    migrations = sorted([f for f in os.listdir() if not os.path.isfile(f)])
 
     for migration in migrations:
-        if any(f not in {'up.sqlt', 'down.sqlt'} for f in os.listdir()):
+        if any(
+            not os.path.exists(f'{migration}/{f}')
+            for f in {'up.sql', 'down.sql'}
+        ):
             continue
 
         with open(f'{migration}/down.sql', 'r') as file:
