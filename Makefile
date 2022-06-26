@@ -16,6 +16,13 @@ run:
 	docker pull postgres
 	docker run --name mypsql -e POSTGRES_PASSWORD=password -d -p 5432:5432 postgres
 
+stop:
+	docker stop mypsql
+	docker rm mypsql
+
+check:
+	docker ps -a | grep mypsql
+
 connect:
 	docker exec -it mypsql bash
 	psql -h localhost -p 5432 -U postgres
