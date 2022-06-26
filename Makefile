@@ -12,6 +12,21 @@ setup-release:
 	python3 -m venv env
 	$(PYTHON) -m pip install -r requirements.dev.txt
 
+run:
+	docker pull postgres
+	docker run --name mypsql -e POSTGRES_PASSWORD=password -d -p 5432:5432 postgres
+
+connect:
+	docker exec -it mypsql bash
+	psql -h localhost -p 5432 -U postgres
+	CREATE DATABASE main;
+
+migrate:
+	cd migrations \
+	&& python3 -m venv env \
+	&& env/bin/pip install -r ../requirements.txt \
+	&& env/bin/python main.py
+
 test-linter-all:
 	find . -type f -name '*.py' \
 	| grep -vE 'env/' \
