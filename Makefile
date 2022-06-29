@@ -25,8 +25,6 @@ check:
 
 connect:
 	docker exec -it mypsql bash
-	psql -h localhost -p 5432 -U postgres
-	CREATE DATABASE main;
 
 migrate:
 	cd migrations \

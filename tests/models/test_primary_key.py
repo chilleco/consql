@@ -36,4 +36,3 @@ async def test_simple():
     assert str(priority)[:15] == "Object Priority"
 
     await priority.save()
-    print(priority)
