@@ -153,3 +153,18 @@ async def test_simple():
     await user.rm()
     users, cursor = await User.get()
     assert len(users) == users_count - 1
+
+    # RAW fetch
+    user = User(
+        login=generate(),
+        name='Alex',
+        surname='Polo',
+    )
+    await user.save()
+    assert (await User.fetch('count'))[0]['count'] > 0
+    assert (await User.fetch('count', conditions=[
+        ('name', 'Alex'),
+    ]))[0]['count'] > 0
+    assert (await User.fetch('count', conditions=[
+        ('name', 'Ivan'),
+    ]))[0]['count'] == 0

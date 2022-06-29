@@ -786,6 +786,29 @@ class BaseModel(Base):
 
         return cursor.list, cursor.cursor_str
 
+    @classmethod
+    async def fetch(
+        cls,
+        by,
+        **kw,
+    ):
+        """ RAW request """
+
+        db = cls.get_db()
+        kw = {
+            **kw,
+            'table': cls.meta.table,
+            'sqlbase': cls.sqlbase(),
+            'shard': db.get('shard'),
+        }
+
+        sql, args = sqlt(f'{by}.sqlt', kw)
+
+        async with dbh(**db) as conn:
+            data = await conn.fetch(sql, *args)
+
+        return data
+
     async def reload(self, **kw):
         """ Update the instance according to the data from the DB
 
