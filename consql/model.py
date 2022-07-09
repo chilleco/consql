@@ -706,7 +706,7 @@ class BaseModel(Base):
         limit=None,
         offset=None,
         cursor=None,
-        by='id',
+        by=None,
         **kw,
     ):
         """ Get instances of the object """
@@ -723,7 +723,9 @@ class BaseModel(Base):
             kw['sort'] = [kw['sort']]
 
         if ids:
-            tmp = 'get.sqlt'
+            if by is None:
+                by = 'id'
+            tmp = 'get'
             kw = {
                 **kw,
                 'key_def': (by,) if isinstance(by, str) else by,
@@ -731,27 +733,29 @@ class BaseModel(Base):
                 'key_tuple': ids if isinstance(ids, (list, tuple)) else [ids],
                 'class': cls,
             }
+        elif by is None:
+            if offset is not None:
+                tmp = 'pager'
+            elif cursor is not None:
+                tmp = 'cursor'
+            else:
+                tmp = 'full'
+        else:
+            tmp = by
 
-        elif offset is not None or by == 'pager':
-            tmp = 'pager.sqlt'
+        if offset is not None:
             pager = Pager(offset=offset, limit=limit, **kw)
             kw['pager'] = pager
-
-        elif cursor is not None or by == 'cursor':
-            tmp = 'cursor.sqlt'
+        else:
             cursor = Cursor(cursor or kw)
             kw['cursor'] = cursor
 
-        else:
-            tmp = 'full.sqlt'
-            cursor = Cursor(kw)
-
-        sql, args = sqlt(tmp, kw)
+        sql, args = sqlt(f'{tmp}.sqlt', kw)
 
         async with dbh(**db) as conn:
             data = await conn.fetch(sql, *args)
 
-        if tmp == 'get.sqlt':
+        if ids:
             if not data:
                 return None
 
@@ -761,7 +765,7 @@ class BaseModel(Base):
 
             return data
 
-        if tmp == 'pager.sqlt':
+        if offset is not None:
             if not pager.disabled:
                 if len(data) <= pager.limit:
                     pager.latest = True

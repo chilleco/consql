@@ -2,6 +2,7 @@ PYTHON := env/bin/python
 
 setup:
 	python3 -m venv env
+	$(PYTHON) -m pip install -U --force-reinstall pip
 	$(PYTHON) -m pip install -r requirements.txt
 
 setup-tests:
@@ -29,6 +30,7 @@ connect:
 migrate:
 	cd migrations \
 	&& python3 -m venv env \
+	&& env/bin/pip install -U --force-reinstall pip \
 	&& env/bin/pip install -r ../requirements.txt \
 	&& env/bin/python main.py
 
