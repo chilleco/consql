@@ -1,3 +1,4 @@
+import json
 import datetime
 
 import pytest
@@ -6,6 +7,19 @@ from libdev.gen import generate
 
 from . import Base, Attribute, Table, Extra
 from consql import coerces
+
+
+def coerce_list(value):
+    if isinstance(value, str):
+        value = json.loads(value)
+
+    result = []
+
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            result.append(json.loads(item) if isinstance(item, str) else item)
+
+    return result
 
 
 class User(Base, table=Table('users')):
@@ -46,6 +60,14 @@ class User(Base, table=Table('users')):
         coerce=Extra.coerce,
         always=True,
         tags='db_extra',
+    )
+    options = Attribute(
+        types=(list, tuple),
+        required=True,
+        default=lambda: [],
+        coerce=coerce_list,
+        always=True,
+        tags='db_json',
     )
     created = Attribute(
         types=datetime.datetime,
@@ -143,6 +165,7 @@ async def test_simple():
         'birthday': None,
         'tags': [],
         'extra': {'-12': "белый"}, # int key → str
+        'options': [],
         'created': user_created, # specified value
         'updated': user.updated, # automatic value
     }

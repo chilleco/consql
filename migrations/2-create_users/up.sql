@@ -12,6 +12,7 @@ CREATE TABLE "users" (
     "birthday" TIMESTAMP,
     "tags" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "extra" JSONB NOT NULL DEFAULT '{}'::JSONB,
+    "options" JSONB NOT NULL DEFAULT '[]'::JSONB,
     "created" TIMESTAMP NOT NULL DEFAULT NOW(),
     "updated" TIMESTAMP NOT NULL DEFAULT NOW()
 );
