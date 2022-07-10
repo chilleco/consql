@@ -1,4 +1,5 @@
 PYTHON := env/bin/python
+NAME := mypsql
 
 setup:
 	python3 -m venv env
@@ -15,17 +16,17 @@ setup-release:
 
 run:
 	docker pull postgres
-	docker run --name mypsql -e POSTGRES_PASSWORD=password -d -p 5432:5432 postgres
+	docker run --name $(NAME) -e POSTGRES_PASSWORD=password -e POSTGRES_DB=main -d -p 5432:5432 postgres
 
 stop:
-	docker stop mypsql
-	docker rm mypsql
+	docker stop $(NAME)
+	docker rm $(NAME)
 
 check:
-	docker ps -a | grep mypsql
+	docker ps -a | grep $(NAME)
 
 connect:
-	docker exec -it mypsql bash
+	docker exec -it $(NAME) psql -h localhost -p 5432 -U postgres
 
 migrate:
 	cd migrations \
