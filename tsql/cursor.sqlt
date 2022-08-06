@@ -1,7 +1,7 @@
 SELECT * FROM "{{ table.name |i }}" WHERE TRUE
 {%- include "where.sqlt" %}
 {% if cursor.serial is not none %}
-    AND "id"
+    AND "created"
         {% if cursor.direction == 'ASC' -%}
             >
         {%- elif cursor.direction == 'DESC' -%}
@@ -9,7 +9,7 @@ SELECT * FROM "{{ table.name |i }}" WHERE TRUE
         {%- else -%}
             {{ "Unknown cursor direction"/0 }}
         {%- endif %}
-            {{ cursor.serial |int }}
+            '{{ cursor.serial |i }}'
 {% endif %}
 ORDER BY "id" {{ cursor.direction |i }}
 LIMIT {{ cursor.limit |i }}

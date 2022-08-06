@@ -782,7 +782,7 @@ class BaseModel(Base):
 
         cursor.list = [cls(x) for x in data]
         if cursor.list:
-            cursor.serial = str(cursor.list[-1].id)
+            cursor.serial = str(cursor.list[-1].created)
 
         if isinstance(db, dict) and 'shard' in db:
             for item in cursor.list:
