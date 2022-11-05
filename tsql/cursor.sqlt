@@ -11,5 +11,5 @@ SELECT * FROM "{{ table.name |i }}" WHERE TRUE
         {%- endif %}
             '{{ cursor.serial |i }}'
 {% endif %}
-ORDER BY "id" {{ cursor.direction |i }}
+ORDER BY "created" {{ cursor.direction |i }}
 LIMIT {{ cursor.limit |i }}

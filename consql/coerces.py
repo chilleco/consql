@@ -6,6 +6,9 @@ from dateutil.parser import parse
 def now():
     return datetime.datetime.now().replace(microsecond=0)
 
+def now_min():
+    return datetime.datetime.now().replace(microsecond=0, second=0)
+
 def time2time(value):
     if value is None:
         return None
@@ -53,6 +56,22 @@ def time2time(value):
     return value
 
 def date_time(value):
+    if value is None or value == '':
+        return None
+    if isinstance(value, datetime.datetime):
+        return value
+
+    if isinstance(value, (float, int)):
+        return datetime.datetime.fromtimestamp(value)
+
+    if isinstance(value, str):
+        value = time2time(value)
+        if value:
+            return value
+
+    raise ValueError(f'Unknown datetime "{value}"')
+
+def date_time_min(value):
     if value is None or value == '':
         return None
     if isinstance(value, datetime.datetime):
