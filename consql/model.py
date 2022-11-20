@@ -843,6 +843,8 @@ class Extra(dict):
         super().__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
+        if self._rehashed is None:
+            self._rehashed = {}
         self._rehashed[key] = True
         self._set_owner_rehashed()
         return super().__setitem__(key, value)

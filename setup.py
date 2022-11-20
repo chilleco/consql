@@ -48,11 +48,11 @@ setup(
     packages=find_packages(exclude=('tests',)),
     python_requires='>=3.7, <4',
     install_requires=[
-        'asyncpg==0.25.0',
-        'libdev>=0.29', # Because conflicts with main repo
-        'jinja2==3.1.1',
-        'orjson==3.6.8',
-        'pydantic==1.9.0',
+        'asyncpg==0.27.0',
+        'libdev>=0.39', # Because conflicts with main repo
+        'jinja2==3.1.2',
+        'orjson==3.8.1',
+        'pydantic==1.10.2',
     ],
     project_urls={
         'Source': 'https://github.com/kosyachniy/consql',
