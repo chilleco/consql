@@ -719,8 +719,8 @@ class BaseModel(Base):
             'sqlbase': cls.sqlbase(),
             'shard': db.get('shard'),
         }
-        if 'sort' in kw and isinstance(kw['sort'], str):
-            kw['sort'] = [kw['sort']]
+        if 'sortby' in kw and isinstance(kw['sortby'], str):
+            kw['sortby'] = [kw['sortby']]
 
         if ids:
             if by is None:

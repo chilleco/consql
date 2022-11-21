@@ -3,10 +3,10 @@ SELECT * FROM "{{ table.name |i }}" WHERE TRUE
 {% if option -%}
     AND options @> {{ '[["' + option[0] + '", "' + option[1] + '"]]' }}
 {%- endif %}
-{% if sort -%}
+{% if sortby -%}
     ORDER BY
-        {% for row in sort %}
-            "{{ row |i }}" ASC
+        {% for row in sortby %}
+            "{{ row |i }}" {% if sort -%}{{ sort |i }}{%- else -%}ASC{%- endif %}
         {% endfor %}
 {%- endif %}
 {% if not pager.disabled -%}

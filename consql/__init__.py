@@ -7,7 +7,7 @@ from .main import make_base
 from .table import Table
 
 
-__version__ = '0.14'
+__version__ = '0.15'
 
 __all__ = (
     '__version__',
