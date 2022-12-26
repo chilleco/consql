@@ -14,7 +14,7 @@ from .errors import ErrorInvalid, ErrorWrong, ErrorRequest
 
 
 TOKEN = ''
-CURSOR_LIMIT = 100
+CURSOR_LIMIT = 1000
 
 
 def enum(data):
@@ -315,15 +315,8 @@ class Base:
 
         self.rehashed('-clean')
 
-    def __init_subclass__(
-        cls,
-        meta_class=Meta,
-        **kwargs,
-    ):
-        cls.meta = meta_class(
-            cls,
-            **kwargs,
-        )
+    def __init_subclass__(cls, meta_class=Meta, **kwargs):
+        cls.meta = meta_class(cls, **kwargs)
 
     def rehashed(self, *args, **kwargs):
         if not args and not kwargs:

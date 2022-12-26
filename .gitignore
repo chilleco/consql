@@ -23,6 +23,9 @@ keys*
 *.log
 *.err
 
+# Dev
+tests/debug/
+
 # Libraries
 
 # Environments
