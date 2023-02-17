@@ -19,14 +19,17 @@ from .errors import ErrorWrong
 
 
 PG_DEFAULT_DB = 'main'
+HOSTS = cfg('pg.host', [])
+if not isinstance(HOSTS, list):
+    HOSTS = [HOSTS]
 DBS = {
     'main': {
         'migrations': 'db/postgresql/main',
         'shards': [{
-            'host': f"{cfg('pg.host')}:{cfg('pg.port')}",
+            'host': ','.join(HOSTS),
             'dbname': cfg('pg.db'),
             'user': cfg('pg.user'),
-            'password': cfg('pg.pass')
+            'password': cfg('pg.pass'),
         }],
         'recheck_timeout': 15,
         'pool_min_size': 10,

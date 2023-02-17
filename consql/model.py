@@ -700,11 +700,12 @@ class BaseModel(Base):
         offset=None,
         cursor=None,
         by=None,
+        db=None,
         **kw,
     ):
         """ Get instances of the object """
 
-        db = cls.get_db()
+        db = cls.get_db(db)
 
         kw = {
             **kw,
@@ -787,11 +788,12 @@ class BaseModel(Base):
     async def fetch(
         cls,
         by,
+        db=None,
         **kw,
     ):
         """ RAW request """
 
-        db = cls.get_db()
+        db = cls.get_db(db)
         kw = {
             **kw,
             'table': cls.meta.table,
