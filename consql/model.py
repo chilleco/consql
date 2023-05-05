@@ -385,12 +385,15 @@ class Base:
 
             setattr(self, name, value)
 
-    def json(self, **kwargs):
+    def json(self, fields=None, **kwargs):
         """ Get dictionary of the object """
 
         res = {}
 
         for name in self.meta.fields:
+            if fields is not None and name not in fields:
+                continue
+
             value = getattr(self, name)
 
             if hasattr(value, 'json'):
